@@ -1,102 +1,77 @@
-import numpy as np 
-import pandas as pd 
+import tkinter as tk
+from tkinter import messagebox
+import json
+import os
 
-mport os
-for dirname, _, filenames in os.walk('/kaggle/input'):
-    for filename in filenames:
-        print(os.path.join(dirname, filename))
-        /kaggle/input/test-file/tested.csv
+TASKS_FILE = 'tasks.json'
 
+class TodoApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("To-Do List Application")
 
-df = pd.read_csv("C:/Users/dell/Downloads/tested.csv")
-df.head()
+        self.tasks = self.load_tasks()
 
-df.shape
+        self.frame = tk.Frame(self.root)
+        self.frame.pack(pady=10)
 
+        self.task_listbox = tk.Listbox(self.frame, width=50, height=10)
+        self.task_listbox.pack(side=tk.LEFT, fill=tk.BOTH)
 
-df = df.drop(["PassengerId", "Ticket"], axis=1)
+        self.scrollbar = tk.Scrollbar(self.frame, orient=tk.VERTICAL)
+        self.scrollbar.config(command=self.task_listbox.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-df["Title"] = df["Name"].apply(lambda x: x.split(",")[1].strip().split(" ")[0])
-​
-common_titles = ["Mr.", "Miss.", "Mrs."]
-df["Title"] = [0 if x in common_titles else 1 for x in df["Title"]]
-df["Cabin"] = [0 if str(x) == "nan" else 1 for x in df["Cabin"]]
+        self.task_listbox.config(yscrollcommand=self.scrollbar.set)
 
+        self.entry = tk.Entry(self.root, width=50)
+        self.entry.pack(pady=10)
 
-embarked = pd.get_dummies(df["Embarked"])
+        self.add_button = tk.Button(self.root, text="Add Task", command=self.add_task)
+        self.add_button.pack(pady=5)
 
+        self.update_button = tk.Button(self.root, text="Update Task", command=self.update_task)
+        self.update_button.pack(pady=5)
 
-df = pd.concat([df, embarked], axis=1)
+        self.populate_listbox()
 
+    def load_tasks(self):
+        if os.path.exists(TASKS_FILE):
+            with open(TASKS_FILE, 'r') as file:
+                return json.load(file)
+        return []
 
-df.head()
+    def save_tasks(self):
+        with open(TASKS_FILE, 'w') as file:
+            json.dump(self.tasks, file, indent=4)
 
+    def add_task(self):
+        task_description = self.entry.get()
+        if task_description:
+            self.tasks.append({'description': task_description, 'completed': False})
+            self.save_tasks()
+            self.populate_listbox()
+            self.entry.delete(0, tk.END)
+        else:
+            messagebox.showwarning("Warning", "You must enter a task description.")
 
-mean_mr = df[df["Name"].str.contains('Mr.', na=False)]['Age'].mean().round()
-mean_miss = df[df["Name"].str.contains('Miss.', na=False)]['Age'].mean().round()
-mean_mrs = df[df["Name"].str.contains('Mrs.', na=False)]['Age'].mean().round()
-mean_master = df[df["Name"].str.contains('Master.', na=False)]['Age'].mean().round()
-mean_dr = df[df["Name"].str.contains('Dr.', na=False)]['Age'].mean().round()
-​
-print("Mr: ", mean_mr)
-print("Miss: ", mean_miss)
-print("Mrs: ", mean_mrs)
-print("Master: ", mean_master)
-print("Dr: ", mean_dr)
-Mr:  34.0
-Miss:  22.0
-Mrs:  39.0
-Master:  7.0
-Dr:  34.0
+    def update_task(self):
+        selected_task_index = self.task_listbox.curselection()
+        if selected_task_index:
+            task_index = selected_task_index[0]
+            self.tasks[task_index]['completed'] = not self.tasks[task_index]['completed']
+            self.save_tasks()
+            self.populate_listbox()
+        else:
+            messagebox.showwarning("Warning", "You must select a task to update.")
 
+    def populate_listbox(self):
+        self.task_listbox.delete(0, tk.END)
+        for task in self.tasks:
+            status = 'Completed' if task['completed'] else 'Pending'
+            self.task_listbox.insert(tk.END, f"{task['description']} - {status}")
 
-ages = {
-    "Mr.": 34.0,
-    "Miss.": 22.0,
-    "Mrs.": 39.0,
-    "Master.": 7.0,
-    "Dr.": 34.0
-}
-
-
-def age(text):
-    name = text[0]
-    age = text[1]
-    
-    if pd.isnull(age):
-        for k, v in ages.items():
-            if k in name:
-                return v
-            
-    else:
-        return age
-
-
-df['Age'] = df[['Name', 'Age']].apply(age, axis=1)
-
-
-df.drop(["Name", "Embarked"], axis=1, inplace=True)
-df.head()
-
-
-df = df.dropna(how="any")
-
-
-df["Survived"].value_counts().plot(kind="bar")
-
-
-df["Pclass"].value_counts().plot(kind="bar")
-
-
-df["Sex"].value_counts().plot(kind="pie", autopct="%.2f%%")
-
-
-df.hist(figsize=(15, 15))
-
-
-df["Sex"] = df["Sex"].map({
-    "male": 0, "female": 1
-})
-
-
-df.head()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = TodoApp(root)
+    root.mainloop()
